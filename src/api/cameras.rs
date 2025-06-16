@@ -32,7 +32,9 @@ impl UnifiProtectClient {
     ///
     /// ```rust
     /// use unifi_protect_client::UnifiProtectClient;
+    /// # use anyhow::Result;
     ///
+    /// # async fn example() -> Result<()> {
     /// let client = UnifiProtectClient::new(
     ///     "https://192.168.1.1",
     ///     "admin",
@@ -49,6 +51,8 @@ impl UnifiProtectClient {
     ///     }
     ///     Err(e) => eprintln!("Failed to list cameras: {e}"),
     /// }
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn list_cameras(&self) -> Result<Vec<Camera>, RequestError> {
         let cameras = self.make_get_request("proxy/protect/api/cameras").await?;
@@ -82,7 +86,9 @@ impl UnifiProtectClient {
     ///
     /// ```rust
     /// use unifi_protect_client::{UnifiProtectClient, models::camera::*};
+    /// # use anyhow::Result;
     ///
+    /// # async fn example() -> Result<()> {
     /// let client = UnifiProtectClient::new(
     ///     "https://192.168.1.1",
     ///     "admin",
@@ -100,6 +106,8 @@ impl UnifiProtectClient {
     ///     Ok(()) => println!("Camera updated successfully"),
     ///     Err(e) => eprintln!("Failed to update camera: {}", e),
     /// }
+    /// # Ok(())
+    /// # }
     /// ```
     pub async fn update_camera(
         &self,

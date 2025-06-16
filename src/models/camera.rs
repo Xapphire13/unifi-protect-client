@@ -13,8 +13,16 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
+/// # use unifi_protect_client::UnifiProtectClient;
+/// # use anyhow::Result;
 /// use unifi_protect_client::models::camera::*;
 ///
+/// # async fn example() -> Result<()> {
+/// # let client = UnifiProtectClient::new(
+/// #     "https://192.168.1.1",
+/// #     "username",
+/// #     "password"
+/// # );
 /// let cameras = client.list_cameras().await?;
 ///
 /// for camera in cameras {
@@ -25,6 +33,8 @@ use serde::{Deserialize, Serialize};
 ///         RecordingMode::Never => println!("Recording disabled"),
 ///     }
 /// }
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

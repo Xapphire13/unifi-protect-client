@@ -16,22 +16,21 @@
 //!
 //! ```rust
 //! use unifi_protect_client::UnifiProtectClient;
-//! use anyhow::Result;
+//! # use anyhow::Result;
 //!
-//! #[tokio::main]
-//! async fn main() -> Result<()> {
-//!     let client = UnifiProtectClient::new(
-//!         "https://192.168.1.1",
-//!         "username",
-//!         "password"
-//!     );
+//! # async fn example() -> Result<()> {
+//! let client = UnifiProtectClient::new(
+//!     "https://192.168.1.1",
+//!     "username",
+//!     "password"
+//! );
 //!
-//!     // List all cameras
-//!     let cameras = client.list_cameras().await?;
-//!     println!("Found {} cameras", cameras.len());
+//! // List all cameras
+//! let cameras = client.list_cameras().await?;
+//! println!("Found {} cameras", cameras.len());
 //!
-//!     Ok(())
-//! }
+//! Ok(())
+//! # }
 //! ```
 
 use std::cell::RefCell;
