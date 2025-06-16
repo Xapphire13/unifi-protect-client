@@ -1,5 +1,8 @@
 # unifi-protect-client
 
+[![Crates.io Version](https://img.shields.io/crates/v/unifi-protect-client)](https://crates.io/crates/unifi-protect-client)
+[![docs.rs](https://img.shields.io/docsrs/unifi-protect-client)](https://docs.rs/unifi-protect-client)
+
 A Rust client library for interacting with the UniFi Protect API.
 
 ## Features
