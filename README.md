@@ -89,6 +89,13 @@ See <https://docs.rs/unifi-protect-client/latest/unifi-protect-client>
    - This may indicate API version compatibility issues
    - Check if your controller firmware is up to date
 
+## Other UniFi Clients
+
+This crate is for interacting with the UniFi Protect API.
+
+- If you are looking for a client for the UniFi Access API checkout: [unifi_access](https://github.com/Carter12s/unifi_access)
+- If you are looking for a client for the UniFi Network API checkout: [unifi-rs](https://github.com/CallumTeesdale/unifi-rs)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
