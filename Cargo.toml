@@ -2,6 +2,12 @@
 name = "unifi-protect-client"
 version = "0.1.0"
 edition = "2024"
+description = "A Rust client library for interacting with the UniFi Protect API"
+license = "MIT"
+repository = "https://github.com/Xapphire13/unifi-protect-client"
+homepage = "https://github.com/Xapphire13/unifi-protect-client"
+keywords = ["unifi", "protect", "api", "client"]
+categories = ["api-bindings"]
 
 [dependencies]
 reqwest = { version = "0.12.20", features = ["json"] }

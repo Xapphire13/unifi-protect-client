@@ -57,7 +57,7 @@ async fn main() -> Result<()> {
 
 ## API Documentation
 
-See <https://docs.rs/unifi-protect-client/latest/unifi-protect-client>
+See <https://docs.rs/unifi-protect-client>
 
 ## Thread Safety
 
