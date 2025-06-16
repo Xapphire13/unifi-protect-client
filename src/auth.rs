@@ -1,4 +1,4 @@
-use reqwest::{Client, ClientBuilder, header::HeaderMap};
+use reqwest::{Client, ClientBuilder, StatusCode, header::HeaderMap};
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
 
@@ -51,7 +51,10 @@ impl UnifiProtectClient {
             .map_err(RequestError::NetworkError)?;
 
         if !response.status().is_success() {
-            return Err(RequestError::Unknown);
+            return match response.status() {
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RequestError::Unauthorized),
+                _ => Err(RequestError::Unknown),
+            };
         }
 
         let response_headers = response.headers();
