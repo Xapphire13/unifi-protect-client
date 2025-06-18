@@ -15,9 +15,9 @@
 //! ## Quick Start
 //!
 //! ```rust
-//! use unifi_protect_client::UnifiProtectClient;
+//! # use unifi_protect_client::UnifiProtectClient;
 //! # use anyhow::Result;
-//!
+//! #
 //! # async fn example() -> Result<()> {
 //! let client = UnifiProtectClient::new(
 //!     "https://192.168.1.1",
@@ -28,8 +28,8 @@
 //! // List all cameras
 //! let cameras = client.list_cameras().await?;
 //! println!("Found {} cameras", cameras.len());
-//!
-//! Ok(())
+//! #
+//! # Ok(())
 //! # }
 //! ```
 
@@ -98,8 +98,8 @@ pub enum RequestError {
 /// ## Example
 ///
 /// ```rust
-/// use unifi_protect_client::UnifiProtectClient;
-///
+/// # use unifi_protect_client::UnifiProtectClient;
+/// #
 /// let client = UnifiProtectClient::new(
 ///     "https://192.168.1.1",  // Your UniFi Protect controller URL
 ///     "admin",                // Username
@@ -133,8 +133,8 @@ impl UnifiProtectClient {
     /// # Examples
     ///
     /// ```rust
-    /// use unifi_protect_client::UnifiProtectClient;
-    ///
+    /// # use unifi_protect_client::UnifiProtectClient;
+    /// #
     /// let client = UnifiProtectClient::new(
     ///     "https://192.168.1.1",
     ///     "admin",

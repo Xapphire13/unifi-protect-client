@@ -4,6 +4,7 @@
 //! settings in the UniFi Protect API.
 
 use serde::{Deserialize, Serialize};
+use typesafe_builder::*;
 
 /// Represents a camera in the UniFi Protect system.
 ///
@@ -15,14 +16,15 @@ use serde::{Deserialize, Serialize};
 /// ```rust
 /// # use unifi_protect_client::UnifiProtectClient;
 /// # use anyhow::Result;
-/// use unifi_protect_client::models::camera::*;
-///
+/// # use unifi_protect_client::models::camera::*;
+/// #
 /// # async fn example() -> Result<()> {
 /// # let client = UnifiProtectClient::new(
 /// #     "https://192.168.1.1",
 /// #     "username",
 /// #     "password"
 /// # );
+/// #
 /// let cameras = client.list_cameras().await?;
 ///
 /// for camera in cameras {
@@ -33,6 +35,7 @@ use serde::{Deserialize, Serialize};
 ///         RecordingMode::Never => println!("Recording disabled"),
 ///     }
 /// }
+/// #
 /// # Ok(())
 /// # }
 /// ```
@@ -112,8 +115,8 @@ pub enum RecordingMode {
 /// # Examples
 ///
 /// ```rust
-/// use unifi_protect_client::models::camera::*;
-///
+/// # use unifi_protect_client::models::camera::*;
+/// #
 /// // Enable continuous recording
 /// let update = CameraUpdate {
 ///     recording_settings: Some(RecordingSettingsUpdate {
@@ -132,8 +135,17 @@ pub enum RecordingMode {
 /// let no_change = CameraUpdate {
 ///     recording_settings: None,
 /// };
+///
+/// // Using builder pattern
+/// let update = CameraUpdateBuilder::new()
+///     .with_recording_settings(
+///         RecordingSettingsUpdateBuilder::new()
+///             .with_mode(RecordingMode::Always)
+///             .build()
+///     )
+///     .build();
 /// ```
-#[derive(Serialize)]
+#[derive(Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 pub struct CameraUpdate {
     /// Optional recording settings to update
@@ -141,6 +153,7 @@ pub struct CameraUpdate {
     /// If `None`, recording settings will not be modified.
     /// If `Some`, the contained settings will be applied to the camera.
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[builder(optional)]
     pub recording_settings: Option<RecordingSettingsUpdate>,
 }
 
@@ -148,12 +161,13 @@ pub struct CameraUpdate {
 ///
 /// Used within `CameraUpdate` to specify which recording settings
 /// should be modified.
-#[derive(Serialize)]
+#[derive(Serialize, Builder)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordingSettingsUpdate {
     /// Optional new recording mode
     ///
     /// If `Some`, the camera's recording mode will be changed to this value.
     /// If `None`, the recording mode will remain unchanged.
+    #[builder(optional)]
     pub mode: Option<RecordingMode>,
 }

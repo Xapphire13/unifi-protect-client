@@ -31,16 +31,16 @@ impl UnifiProtectClient {
     /// # Examples
     ///
     /// ```rust
-    /// use unifi_protect_client::UnifiProtectClient;
+    /// # use unifi_protect_client::UnifiProtectClient;
     /// # use anyhow::Result;
-    ///
+    /// #
     /// # async fn example() -> Result<()> {
-    /// let client = UnifiProtectClient::new(
-    ///     "https://192.168.1.1",
-    ///     "admin",
-    ///     "password"
-    /// );
-    ///
+    /// # let client = UnifiProtectClient::new(
+    /// #     "https://192.168.1.1",
+    /// #     "admin",
+    /// #     "password"
+    /// # );
+    /// #
     /// match client.list_cameras().await {
     ///     Ok(cameras) => {
     ///         println!("Found {} cameras:", cameras.len());
@@ -85,16 +85,16 @@ impl UnifiProtectClient {
     /// # Examples
     ///
     /// ```rust
-    /// use unifi_protect_client::{UnifiProtectClient, models::camera::*};
+    /// # use unifi_protect_client::{UnifiProtectClient, models::camera::*};
     /// # use anyhow::Result;
-    ///
+    /// #
     /// # async fn example() -> Result<()> {
-    /// let client = UnifiProtectClient::new(
-    ///     "https://192.168.1.1",
-    ///     "admin",
-    ///     "password"
-    /// );
-    ///
+    /// # let client = UnifiProtectClient::new(
+    /// #     "https://192.168.1.1",
+    /// #     "admin",
+    /// #     "password"
+    /// # );
+    /// #
     /// // Change a camera's recording mode to "always record"
     /// let update = CameraUpdate {
     ///     recording_settings: Some(RecordingSettingsUpdate {
