@@ -62,10 +62,6 @@ async fn main() -> Result<()> {
 
 See <https://docs.rs/unifi-protect-client>
 
-## Thread Safety
-
-**Warning**: The current implementation is not thread-safe. The client should not be shared across threads or used in concurrent contexts.
-
 ## Troubleshooting
 
 ### Common Issues

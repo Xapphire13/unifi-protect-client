@@ -4,7 +4,7 @@
 //! settings in the UniFi Protect API.
 
 use serde::{Deserialize, Serialize};
-use typesafe_builder::*;
+use typesafe_builder::{_TypesafeBuilderEmpty, _TypesafeBuilderFilled, Builder};
 
 /// Represents a camera in the UniFi Protect system.
 ///
@@ -39,7 +39,7 @@ use typesafe_builder::*;
 /// # Ok(())
 /// # }
 /// ```
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Camera {
     /// Unique identifier for the camera
@@ -61,7 +61,7 @@ pub struct Camera {
 /// Recording configuration for a camera.
 ///
 /// Contains the settings that control when and how the camera records video.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RecordingSettings {
     /// The current recording mode for the camera

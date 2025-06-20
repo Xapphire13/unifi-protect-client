@@ -35,19 +35,19 @@ impl UnifiProtectClient {
     /// before each API request.
     pub(crate) async fn ensure_authenticated(&self) -> Result<(), RequestError> {
         // If we have a client, we're already authenticated
-        if self.client.borrow().is_some() {
+        if self.client.lock().unwrap().is_some() {
             return Ok(());
         }
 
         let headers = self.acquire_auth_headers().await?;
 
-        self.client.replace(Some(
+        *self.client.lock().unwrap() = Some(
             ClientBuilder::new()
                 .danger_accept_invalid_certs(true)
                 .default_headers(headers)
                 .build()
                 .map_err(|_| RequestError::Unknown)?,
-        ));
+        );
 
         Ok(())
     }

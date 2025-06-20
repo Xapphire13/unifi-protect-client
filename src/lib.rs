@@ -33,7 +33,7 @@
 //! # }
 //! ```
 
-use std::cell::RefCell;
+use std::sync::{Arc, Mutex};
 
 use reqwest::{Client, StatusCode};
 use secrecy::SecretString;
@@ -90,11 +90,6 @@ pub enum RequestError {
 /// handles authentication, session management, and provides methods for
 /// interacting with various UniFi Protect resources.
 ///
-/// ## Thread Safety
-///
-/// **Note**: This client is currently not thread-safe.
-/// It should not be shared across threads or used in concurrent contexts.
-///
 /// ## Example
 ///
 /// ```rust
@@ -107,7 +102,7 @@ pub enum RequestError {
 /// );
 /// ```
 pub struct UnifiProtectClient {
-    client: RefCell<Option<Client>>,
+    client: Arc<Mutex<Option<Client>>>,
     host: String,
     credentials: AuthCredentials,
 }
@@ -121,7 +116,7 @@ impl UnifiProtectClient {
     ///
     /// # Arguments
     ///
-    /// * `host` - The base URL of your UniFi Protect controller (e.g., "https://192.168.1.1")
+    /// * `host` - The base URL of your UniFi Protect controller (e.g., `https://192.168.1.1`)
     /// * `username` - Username for authentication
     /// * `password` - Password for authentication
     ///
@@ -141,9 +136,10 @@ impl UnifiProtectClient {
     ///     "your-secure-password"
     /// );
     /// ```
+    #[must_use]
     pub fn new(host: &str, username: &str, password: &str) -> UnifiProtectClient {
         UnifiProtectClient {
-            client: RefCell::new(None),
+            client: Arc::new(Mutex::new(None)),
             host: host.to_owned(),
             credentials: AuthCredentials {
                 username: SecretString::from(username),
@@ -152,13 +148,21 @@ impl UnifiProtectClient {
         }
     }
 
-    async fn make_get_request<T: DeserializeOwned>(&self, uri: &str) -> Result<T, RequestError> {
+    async fn make_get_request<T: DeserializeOwned>(&self, path: &str) -> Result<T, RequestError> {
         self.ensure_authenticated().await?;
 
-        let url = format!("{}/{uri}", self.host);
-        let response = { self.client.borrow().as_ref().unwrap().get(&url).send() }
-            .await
-            .map_err(RequestError::NetworkError)?;
+        let url = format!("{}/{path}", self.host);
+        let response = {
+            self.client
+                .lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .get(&url)
+                .send()
+        }
+        .await
+        .map_err(RequestError::NetworkError)?;
 
         if !response.status().is_success() {
             return match response.status() {
@@ -177,15 +181,16 @@ impl UnifiProtectClient {
 
     async fn make_patch_request<T: Serialize>(
         &self,
-        uri: &str,
+        path: &str,
         body: T,
     ) -> Result<(), RequestError> {
         self.ensure_authenticated().await?;
 
-        let url = format!("{}/{uri}", self.host);
+        let url = format!("{}/{path}", self.host);
         let response = {
             self.client
-                .borrow()
+                .lock()
+                .unwrap()
                 .as_ref()
                 .unwrap()
                 .patch(&url)
