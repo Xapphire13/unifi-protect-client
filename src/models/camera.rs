@@ -56,6 +56,12 @@ pub struct Camera {
 
     /// Current recording settings for the camera
     pub recording_settings: RecordingSettings,
+
+    /// Whether the camera is currently recording video
+    pub is_recording: bool,
+
+    /// MAC address of the camera
+    pub mac: String,
 }
 
 /// Recording configuration for a camera.
