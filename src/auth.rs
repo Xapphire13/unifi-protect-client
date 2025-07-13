@@ -39,6 +39,13 @@ impl UnifiProtectClient {
             return Ok(());
         }
 
+        self.authenticate().await
+    }
+
+    /// Aquires authentication headers and initializes an authenticated HTTP client
+    ///
+    /// # Internal Use
+    pub(crate) async fn authenticate(&self) -> Result<(), RequestError> {
         let headers = self.acquire_auth_headers().await?;
 
         *self.client.lock().unwrap() = Some(

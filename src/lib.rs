@@ -148,37 +148,90 @@ impl UnifiProtectClient {
         }
     }
 
+    /// Makes a GET request to the specified API endpoint.
+    ///
+    /// This method automatically handles authentication and will attempt to
+    /// re-authenticate once if the request fails with an authentication error.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The API endpoint path (relative to the host)
+    ///
+    /// # Returns
+    ///
+    /// Returns the deserialized response on success, or a `RequestError` on failure.
+    ///
+    /// # Errors
+    ///
+    /// * `RequestError::Unauthorized` - Authentication failed, even after retry
+    /// * `RequestError::NetworkError` - Network-related failures
+    /// * `RequestError::DeserializationError` - Failed to parse response
+    /// * `RequestError::Unknown` - Other HTTP errors
     async fn make_get_request<T: DeserializeOwned>(&self, path: &str) -> Result<T, RequestError> {
         self.ensure_authenticated().await?;
 
         let url = format!("{}/{path}", self.host);
-        let response = {
-            self.client
-                .lock()
-                .unwrap()
-                .as_ref()
-                .unwrap()
-                .get(&url)
-                .send()
-        }
-        .await
-        .map_err(RequestError::NetworkError)?;
+        let mut retries_remaining = 1u8;
 
-        if !response.status().is_success() {
-            return match response.status() {
-                StatusCode::UNAUTHORIZED => Err(RequestError::Unauthorized),
-                _ => Err(RequestError::Unknown),
-            };
-        }
-
-        let result: T = response
-            .json()
+        while retries_remaining > 0 {
+            let response = {
+                self.client
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .get(&url)
+                    .send()
+            }
             .await
-            .map_err(|err| RequestError::DeserializationError(err.to_string()))?;
+            .map_err(RequestError::NetworkError)?;
 
-        Ok(result)
+            if !response.status().is_success() {
+                match response.status() {
+                    StatusCode::UNAUTHORIZED => {
+                        // Re-authenticate and try again if we haven't already retried
+                        if retries_remaining > 0 {
+                            retries_remaining -= 1;
+                            self.authenticate().await?;
+                            continue;
+                        }
+
+                        return Err(RequestError::Unauthorized);
+                    }
+                    _ => return Err(RequestError::Unknown),
+                };
+            }
+
+            let result: T = response
+                .json()
+                .await
+                .map_err(|err| RequestError::DeserializationError(err.to_string()))?;
+
+            return Ok(result);
+        }
+
+        Err(RequestError::Unknown)
     }
 
+    /// Makes a PATCH request to the specified API endpoint.
+    ///
+    /// This method automatically handles authentication and will attempt to
+    /// re-authenticate once if the request fails with an authentication error.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The API endpoint path (relative to the host)
+    /// * `body` - The request body to serialize as JSON
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` on success, or a `RequestError` on failure.
+    ///
+    /// # Errors
+    ///
+    /// * `RequestError::Unauthorized` - Authentication failed, even after retry
+    /// * `RequestError::NetworkError` - Network-related failures
+    /// * `RequestError::Unknown` - Other HTTP errors
     async fn make_patch_request<T: Serialize>(
         &self,
         path: &str,
@@ -187,23 +240,41 @@ impl UnifiProtectClient {
         self.ensure_authenticated().await?;
 
         let url = format!("{}/{path}", self.host);
-        let response = {
-            self.client
-                .lock()
-                .unwrap()
-                .as_ref()
-                .unwrap()
-                .patch(&url)
-                .json(&body)
-                .send()
-        }
-        .await
-        .map_err(RequestError::NetworkError)?;
+        let mut retries_remaining = 1u8;
 
-        match response.status() {
-            StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RequestError::Unauthorized),
-            _ if !response.status().is_success() => Err(RequestError::Unknown),
-            _ => Ok(()),
+        while retries_remaining > 0 {
+            let response = {
+                self.client
+                    .lock()
+                    .unwrap()
+                    .as_ref()
+                    .unwrap()
+                    .patch(&url)
+                    .json(&body)
+                    .send()
+            }
+            .await
+            .map_err(RequestError::NetworkError)?;
+
+            if !response.status().is_success() {
+                match response.status() {
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                        // Re-authenticate and try again if we haven't already retried
+                        if retries_remaining > 0 {
+                            retries_remaining -= 1;
+                            self.authenticate().await?;
+                            continue;
+                        }
+
+                        return Err(RequestError::Unauthorized);
+                    }
+                    _ => return Err(RequestError::Unknown),
+                };
+            }
+
+            return Ok(());
         }
+
+        Err(RequestError::Unknown)
     }
 }
