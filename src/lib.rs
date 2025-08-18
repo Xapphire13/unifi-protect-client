@@ -171,9 +171,10 @@ impl UnifiProtectClient {
         self.ensure_authenticated().await?;
 
         let url = format!("{}/{path}", self.host);
-        let mut retries_remaining = 1u8;
+        let mut remaining_attempts = 2u8;
 
-        while retries_remaining > 0 {
+        while remaining_attempts > 0 {
+            remaining_attempts -= 1;
             let response = {
                 self.client
                     .lock()
@@ -190,8 +191,7 @@ impl UnifiProtectClient {
                 match response.status() {
                     StatusCode::UNAUTHORIZED => {
                         // Re-authenticate and try again if we haven't already retried
-                        if retries_remaining > 0 {
-                            retries_remaining -= 1;
+                        if remaining_attempts > 0 {
                             self.authenticate().await?;
                             continue;
                         }
