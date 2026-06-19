@@ -104,14 +104,17 @@ impl UnifiProtectClient {
 
         let status = response.status();
         if !status.is_success() {
-            if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
-                warn!(%status, "login failed: check your credentials");
-                return Err(RequestError::Unauthorized);
-            }
-
-            let body = response.text().await.unwrap_or_default();
-            error!(%status, %body, "login failed with unexpected response");
-            return Err(RequestError::UnexpectedStatus { status, body });
+            return match status {
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    warn!(%status, "login failed: check your credentials");
+                    Err(RequestError::Unauthorized)
+                }
+                _ => {
+                    let body = response.text().await.unwrap_or_default();
+                    error!(%status, %body, "login failed with unexpected response");
+                    Err(RequestError::UnexpectedStatus { status, body })
+                }
+            };
         }
 
         let response_headers = response.headers();

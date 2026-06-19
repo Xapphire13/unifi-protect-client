@@ -207,21 +207,23 @@ impl UnifiProtectClient {
 
             let status = response.status();
             if !status.is_success() {
-                // Re-authenticate and try again if we haven't already retried
-                if status == StatusCode::UNAUTHORIZED && remaining_attempts > 0 {
-                    debug!(%url, "unauthorized response, re-authenticating and retrying");
-                    self.authenticate().await?;
-                    continue;
+                match status {
+                    // Re-authenticate and try again if we haven't already retried
+                    StatusCode::UNAUTHORIZED if remaining_attempts > 0 => {
+                        debug!(%url, "unauthorized response, re-authenticating and retrying");
+                        self.authenticate().await?;
+                        continue;
+                    }
+                    StatusCode::UNAUTHORIZED => {
+                        warn!(%url, "request failed: unauthorized");
+                        return Err(RequestError::Unauthorized);
+                    }
+                    _ => {
+                        let body = response.text().await.unwrap_or_default();
+                        error!(%status, %url, %body, "unexpected response from API");
+                        return Err(RequestError::UnexpectedStatus { status, body });
+                    }
                 }
-
-                if status == StatusCode::UNAUTHORIZED {
-                    warn!(%url, "request failed: unauthorized");
-                    return Err(RequestError::Unauthorized);
-                }
-
-                let body = response.text().await.unwrap_or_default();
-                error!(%status, %url, %body, "unexpected response from API");
-                return Err(RequestError::UnexpectedStatus { status, body });
             }
 
             let result: T = response.json().await.map_err(|err| {
@@ -284,22 +286,24 @@ impl UnifiProtectClient {
 
             let status = response.status();
             if !status.is_success() {
-                if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+                match status {
                     // Re-authenticate and try again if we haven't already retried
-                    if retries_remaining > 0 {
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN if retries_remaining > 0 => {
                         retries_remaining -= 1;
                         debug!(%url, %status, "auth failure, re-authenticating and retrying");
                         self.authenticate().await?;
                         continue;
                     }
-
-                    warn!(%url, %status, "request failed: unauthorized");
-                    return Err(RequestError::Unauthorized);
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                        warn!(%url, %status, "request failed: unauthorized");
+                        return Err(RequestError::Unauthorized);
+                    }
+                    _ => {
+                        let body = response.text().await.unwrap_or_default();
+                        error!(%status, %url, %body, "unexpected response from API");
+                        return Err(RequestError::UnexpectedStatus { status, body });
+                    }
                 }
-
-                let body = response.text().await.unwrap_or_default();
-                error!(%status, %url, %body, "unexpected response from API");
-                return Err(RequestError::UnexpectedStatus { status, body });
             }
 
             return Ok(());
