@@ -97,6 +97,10 @@ pub enum RequestError {
     Unknown,
 }
 
+/// Total number of attempts made for an authenticated request: the initial
+/// attempt plus one retry after re-authenticating on an auth failure.
+const MAX_REQUEST_ATTEMPTS: u8 = 2;
+
 /// Client for interacting with the UniFi Protect API.
 ///
 /// This is the main entry point for all UniFi Protect operations. The client
@@ -189,7 +193,7 @@ impl UnifiProtectClient {
         let path = path.trim_start_matches('/');
         let url = format!("{}/{path}", self.host);
         debug!(%url, "GET request");
-        let mut remaining_attempts = 2u8;
+        let mut remaining_attempts = MAX_REQUEST_ATTEMPTS;
 
         while remaining_attempts > 0 {
             remaining_attempts -= 1;
@@ -268,9 +272,10 @@ impl UnifiProtectClient {
         let path = path.trim_start_matches('/');
         let url = format!("{}/{path}", self.host);
         debug!(%url, "PATCH request");
-        let mut retries_remaining = 1u8;
+        let mut remaining_attempts = MAX_REQUEST_ATTEMPTS;
 
-        while retries_remaining > 0 {
+        while remaining_attempts > 0 {
+            remaining_attempts -= 1;
             let response = {
                 self.client
                     .lock()
@@ -288,8 +293,7 @@ impl UnifiProtectClient {
             if !status.is_success() {
                 match status {
                     // Re-authenticate and try again if we haven't already retried
-                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN if retries_remaining > 0 => {
-                        retries_remaining -= 1;
+                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN if remaining_attempts > 0 => {
                         debug!(%url, %status, "auth failure, re-authenticating and retrying");
                         self.authenticate().await?;
                         continue;
