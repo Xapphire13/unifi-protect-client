@@ -99,6 +99,21 @@ This crate is for interacting with the UniFi Protect API.
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Releasing
+
+Publishing to [crates.io](https://crates.io/crates/unifi-protect-client) is automated via GitHub Actions and triggered by pushing a version tag (`v*`). To cut a release:
+
+1. Bump `version` in `Cargo.toml` to the new version (`X.Y.Z`).
+2. Commit and merge that change to `main`.
+3. Tag the release commit and push the tag, using the same version as `Cargo.toml`:
+
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+The workflow checks that the tag matches the version in `Cargo.toml` (tag `vX.Y.Z` ↔ `version = "X.Y.Z"`) and fails the publish if they differ.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
