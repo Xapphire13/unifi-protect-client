@@ -17,7 +17,7 @@ impl UnifiProtectClient {
     /// ```
     pub async fn get_device_tags(&self) -> Result<Vec<DeviceTag>, RequestError> {
         let device_tags = self
-            .make_get_request("/proxy/protect/api/device-tags")
+            .make_get_request("proxy/protect/api/device-tags")
             .await?;
         Ok(device_tags)
     }

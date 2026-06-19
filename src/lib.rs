@@ -39,6 +39,7 @@ use reqwest::{Client, StatusCode};
 use secrecy::SecretString;
 use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
+use tracing::{debug, error, warn};
 
 use crate::auth::AuthCredentials;
 
@@ -76,10 +77,22 @@ pub enum RequestError {
     #[error("Failed to parse API response: {0}")]
     DeserializationError(String),
 
+    /// The API responded with an unexpected, non-success HTTP status.
+    ///
+    /// Carries the HTTP status code and the raw response body so unexpected
+    /// failures are diagnosable instead of opaque.
+    #[error("Unexpected HTTP {status}: {body}")]
+    UnexpectedStatus {
+        /// The HTTP status code returned by the API.
+        status: StatusCode,
+        /// The raw response body, included to aid debugging.
+        body: String,
+    },
+
     /// Generic error for unhandled cases
     ///
-    /// Used for HTTP errors that don't fall into other categories
-    /// or unexpected error conditions.
+    /// Used for non-HTTP failures that don't fall into other categories
+    /// (e.g. a malformed authentication response).
     #[error("An unknown error occurred")]
     Unknown,
 }
@@ -170,7 +183,12 @@ impl UnifiProtectClient {
     async fn make_get_request<T: DeserializeOwned>(&self, path: &str) -> Result<T, RequestError> {
         self.ensure_authenticated().await?;
 
+        // Tolerate paths supplied with or without a leading slash so callers
+        // can't accidentally produce a double slash (which the controller
+        // rejects with 400).
+        let path = path.trim_start_matches('/');
         let url = format!("{}/{path}", self.host);
+        debug!(%url, "GET request");
         let mut remaining_attempts = 2u8;
 
         while remaining_attempts > 0 {
@@ -187,25 +205,29 @@ impl UnifiProtectClient {
             .await
             .map_err(RequestError::NetworkError)?;
 
-            if !response.status().is_success() {
-                match response.status() {
-                    StatusCode::UNAUTHORIZED => {
-                        // Re-authenticate and try again if we haven't already retried
-                        if remaining_attempts > 0 {
-                            self.authenticate().await?;
-                            continue;
-                        }
+            let status = response.status();
+            if !status.is_success() {
+                // Re-authenticate and try again if we haven't already retried
+                if status == StatusCode::UNAUTHORIZED && remaining_attempts > 0 {
+                    debug!(%url, "unauthorized response, re-authenticating and retrying");
+                    self.authenticate().await?;
+                    continue;
+                }
 
-                        return Err(RequestError::Unauthorized);
-                    }
-                    _ => return Err(RequestError::Unknown),
-                };
+                if status == StatusCode::UNAUTHORIZED {
+                    warn!(%url, "request failed: unauthorized");
+                    return Err(RequestError::Unauthorized);
+                }
+
+                let body = response.text().await.unwrap_or_default();
+                error!(%status, %url, %body, "unexpected response from API");
+                return Err(RequestError::UnexpectedStatus { status, body });
             }
 
-            let result: T = response
-                .json()
-                .await
-                .map_err(|err| RequestError::DeserializationError(err.to_string()))?;
+            let result: T = response.json().await.map_err(|err| {
+                error!(%url, error = %err, "failed to parse API response");
+                RequestError::DeserializationError(err.to_string())
+            })?;
 
             return Ok(result);
         }
@@ -239,7 +261,11 @@ impl UnifiProtectClient {
     ) -> Result<(), RequestError> {
         self.ensure_authenticated().await?;
 
+        // Tolerate paths supplied with or without a leading slash (see
+        // `make_get_request`).
+        let path = path.trim_start_matches('/');
         let url = format!("{}/{path}", self.host);
+        debug!(%url, "PATCH request");
         let mut retries_remaining = 1u8;
 
         while retries_remaining > 0 {
@@ -256,20 +282,24 @@ impl UnifiProtectClient {
             .await
             .map_err(RequestError::NetworkError)?;
 
-            if !response.status().is_success() {
-                match response.status() {
-                    StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
-                        // Re-authenticate and try again if we haven't already retried
-                        if retries_remaining > 0 {
-                            retries_remaining -= 1;
-                            self.authenticate().await?;
-                            continue;
-                        }
-
-                        return Err(RequestError::Unauthorized);
+            let status = response.status();
+            if !status.is_success() {
+                if matches!(status, StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN) {
+                    // Re-authenticate and try again if we haven't already retried
+                    if retries_remaining > 0 {
+                        retries_remaining -= 1;
+                        debug!(%url, %status, "auth failure, re-authenticating and retrying");
+                        self.authenticate().await?;
+                        continue;
                     }
-                    _ => return Err(RequestError::Unknown),
-                };
+
+                    warn!(%url, %status, "request failed: unauthorized");
+                    return Err(RequestError::Unauthorized);
+                }
+
+                let body = response.text().await.unwrap_or_default();
+                error!(%status, %url, %body, "unexpected response from API");
+                return Err(RequestError::UnexpectedStatus { status, body });
             }
 
             return Ok(());
