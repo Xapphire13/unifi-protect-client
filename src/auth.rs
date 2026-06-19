@@ -6,6 +6,7 @@
 use reqwest::{Client, ClientBuilder, StatusCode, header::HeaderMap};
 use secrecy::{ExposeSecret, SecretString};
 use serde_json::json;
+use tracing::{debug, error, warn};
 
 use crate::{RequestError, UnifiProtectClient};
 
@@ -53,7 +54,10 @@ impl UnifiProtectClient {
                 .danger_accept_invalid_certs(true)
                 .default_headers(headers)
                 .build()
-                .map_err(|_| RequestError::Unknown)?,
+                .map_err(|err| {
+                    error!(error = %err, "failed to build authenticated HTTP client");
+                    RequestError::Unknown
+                })?,
         );
 
         Ok(())
@@ -84,6 +88,7 @@ impl UnifiProtectClient {
     /// credentials, or other `RequestError` variants for network or parsing issues.
     async fn acquire_auth_headers(&self) -> Result<HeaderMap, RequestError> {
         let url = format!("{}/api/auth/login", self.host);
+        debug!(%url, "authenticating");
         let response = Client::builder()
             .danger_accept_invalid_certs(true)
             .build()
@@ -97,10 +102,18 @@ impl UnifiProtectClient {
             .await
             .map_err(RequestError::NetworkError)?;
 
-        if !response.status().is_success() {
-            return match response.status() {
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RequestError::Unauthorized),
-                _ => Err(RequestError::Unknown),
+        let status = response.status();
+        if !status.is_success() {
+            return match status {
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    warn!(%status, "login failed: check your credentials");
+                    Err(RequestError::Unauthorized)
+                }
+                _ => {
+                    let body = response.text().await.unwrap_or_default();
+                    error!(%status, %body, "login failed with unexpected response");
+                    Err(RequestError::UnexpectedStatus { status, body })
+                }
             };
         }
 
@@ -112,7 +125,10 @@ impl UnifiProtectClient {
             "X-CSRF-Token",
             response_headers
                 .get("X-CSRF-Token")
-                .ok_or(RequestError::Unknown)?
+                .ok_or_else(|| {
+                    error!("login response missing X-CSRF-Token header");
+                    RequestError::Unknown
+                })?
                 .clone(),
         );
 
@@ -121,7 +137,10 @@ impl UnifiProtectClient {
             "Cookie",
             response_headers
                 .get("Set-Cookie")
-                .ok_or(RequestError::Unknown)?
+                .ok_or_else(|| {
+                    error!("login response missing Set-Cookie header");
+                    RequestError::Unknown
+                })?
                 .clone(),
         );
 
